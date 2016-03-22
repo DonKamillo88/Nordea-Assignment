@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">NordeaAssignment</string>
+    <string name="action_search">Search</string>
+    <string name="location_not_available">Location not available</string>
+    <string name="lng">Lng:</string>
+    <string name="lat">Lat:</string>
+    <string name="unknown">unknown</string>
+</resources>

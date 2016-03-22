@@ -11,4 +11,5 @@ public interface SearchVenuesView {
 
     void showVenues(List<VenueModel> venues);
 
+    void showPermissionsInfo();
 }

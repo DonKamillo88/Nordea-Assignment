@@ -73,11 +73,7 @@ public class MainActivity extends AppCompatActivity implements MainView {
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
             case VenueListPresenter.PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    venueListPresenter.getVenues();
-                } else {
-                    // permission denied
-                }
+                venueListPresenter.permissionsResult(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED);
             }
         }
     }

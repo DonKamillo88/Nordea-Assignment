@@ -5,7 +5,9 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Criteria;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -32,6 +34,8 @@ import retrofit.Retrofit;
 public class VenueListPresenter implements Presenter, Callback<FoursquareSearchResponse> {
     private static final String TAG = "VenueListPresenter";
     final public static int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
+    final private static long MIN_TIME_BW_UPDATES = 0;
+    final private static float MIN_DISTANCE_CHANGE_FOR_UPDATES = 10000;
 
     private Call<FoursquareSearchResponse> call;
     private MainView mainView;
@@ -53,13 +57,15 @@ public class VenueListPresenter implements Presenter, Callback<FoursquareSearchR
     public void getVenues() {
         Location location = getLocation();
 
-        if (location == null) return;
+        if (location != null)
+            callForVenues(location);
+    }
 
+    private void callForVenues(Location location) {
         mainView.showLatLng(location);
         call = getFoursquare().getData(getLatLongFormatted(location), AuthData.CLIENT_ID, AuthData.CLIENT_SECRET, AuthData.VERSION);
         call.enqueue(this);
     }
-
 
     private String getLatLongFormatted(Location location) {
         return String.valueOf(location.getLatitude()) + "," + String.valueOf(location.getLongitude());
@@ -67,12 +73,20 @@ public class VenueListPresenter implements Presenter, Callback<FoursquareSearchR
 
     @Override
     public void onResponse(Response<FoursquareSearchResponse> response, Retrofit retrofit) {
-        List<VenueModel> mVenueModel = new ArrayList<>();
+        List<VenueModel> venueModels = new ArrayList<>();
         for (FoursquareSearchResponse.Venue venue : response.body().getResponse().getVenues()) {
-            mVenueModel.add(new VenueModel(venue.getName(), venue.getLocation().getAddress(), venue.getLocation().getDistance()));
+            venueModels.add(new VenueModel(venue.getName(), venue.getLocation().getAddress(), venue.getLocation().getDistance()));
         }
 
-        searchVenuesView.showVenues(mVenueModel);
+        searchVenuesView.showVenues(venueModels);
+    }
+
+    public void permissionsResult(boolean result) {
+        if (result) {
+            getVenues();
+        } else {
+            searchVenuesView.showPermissionsInfo();
+        }
     }
 
     @Override
@@ -80,29 +94,51 @@ public class VenueListPresenter implements Presenter, Callback<FoursquareSearchR
         mainView.showError(t.getLocalizedMessage());
     }
 
-
     /**
-     * @return last known device location
+     * Get last known device location, or when it is not available request location updates
      */
     public Location getLocation() {
-        LocationManager locationManager = (LocationManager) ((AppCompatActivity) mainView).getSystemService(Context.LOCATION_SERVICE);
-
-        Criteria criteria = new Criteria();
-        String provider = locationManager.getBestProvider(criteria, false);
-
-        Log.d(TAG, "Provider " + provider + " has been selected.");
-
         if (ActivityCompat.checkSelfPermission((AppCompatActivity) mainView, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission((AppCompatActivity) mainView, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             askForPermissions();
             return null;
         }
-        return locationManager.getLastKnownLocation(provider);
+
+        LocationManager locationManager = (LocationManager) ((AppCompatActivity) mainView).getSystemService(Context.LOCATION_SERVICE);
+        Criteria criteria = new Criteria();
+        String provider = locationManager.getBestProvider(criteria, true);
+        Log.d(TAG, "Provider " + provider + " has been selected.");
+
+        Location lastKnownLocation = locationManager.getLastKnownLocation(provider);
+        if (lastKnownLocation == null)
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATES, locationListener);
+
+        return null;
     }
+
+    private LocationListener locationListener = new LocationListener() {
+        @Override
+        public void onLocationChanged(Location location) {
+            Log.d(TAG, "onLocationChanged - lat:" + location.getLatitude() + ", lng:" + location.getLongitude());
+            callForVenues(location);
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+        }
+
+        @Override
+        public void onProviderEnabled(String provider) {
+        }
+
+        @Override
+        public void onProviderDisabled(String provider) {
+        }
+    };
 
     private void askForPermissions() {
         ActivityCompat.requestPermissions((AppCompatActivity) mainView,
-                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET},
                 PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
     }
 

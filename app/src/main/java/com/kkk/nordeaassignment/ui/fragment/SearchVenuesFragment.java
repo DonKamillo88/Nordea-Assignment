@@ -13,6 +13,8 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import com.kkk.nordeaassignment.R;
 import com.kkk.nordeaassignment.ui.model.VenueModel;
@@ -28,6 +30,8 @@ public class SearchVenuesFragment extends Fragment implements SearchView.OnQuery
     private RecyclerView mRecyclerView;
     private List<VenueModel> mVenueModel;
     private VenueListAdapter mAdapter;
+    private ProgressBar progressBar;
+    private TextView permissionsInfo;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -41,6 +45,8 @@ public class SearchVenuesFragment extends Fragment implements SearchView.OnQuery
         View view = inflater.inflate(R.layout.search_fragment, container, false);
 
         mRecyclerView = (RecyclerView) view.findViewById(R.id.recycler_view);
+        permissionsInfo = (TextView) view.findViewById(R.id.no_permissions_info);
+        progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
         LinearLayoutManager layoutManager = new LinearLayoutManager(getActivity());
         mRecyclerView.setLayoutManager(layoutManager);
         return view;
@@ -83,15 +89,24 @@ public class SearchVenuesFragment extends Fragment implements SearchView.OnQuery
 
     @Override
     public void showVenues(final List<VenueModel> venues) {
+        if (getContext() == null || getContext().getMainLooper() == null) return;
         Handler mainHandler = new Handler(getContext().getMainLooper());
 
         Runnable myRunnable = new Runnable() {
             @Override
             public void run() {
                 updateData(venues);
+                progressBar.setVisibility(View.GONE);
+                permissionsInfo.setVisibility(View.GONE);
             }
         };
         mainHandler.post(myRunnable);
+    }
+
+    @Override
+    public void showPermissionsInfo() {
+        permissionsInfo.setVisibility(View.VISIBLE);
+        progressBar.setVisibility(View.GONE);
     }
 
     @Override
